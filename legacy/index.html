@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Catalogue → Cart → Grade-wise Ratio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{--navy:#1b2538;--red:#d71920;--bg:#f3f5f9;--card:#fff;--line:#dfe3ec;--ink:#1c2230;--mute:#667}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:var(--navy);color:#fff;padding:12px 24px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+header h1{font-size:17px;margin:0;flex:1}header b{color:#ff6b70}
+button,select,input{font:inherit}button{border:0;border-radius:6px;padding:8px 14px;cursor:pointer;background:#e4e8f0}
+.red{background:var(--red);color:#fff}.dark{background:#3b4558;color:#fff}button:disabled{opacity:.45;cursor:not-allowed}
+main{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 24px;align-items:start}
+@media(max-width:900px){main{grid-template-columns:1fr}}
+section{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+section>h2{margin:0;padding:10px 14px;background:var(--navy);color:#fff;font-size:14px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.body{padding:12px 14px;max-height:68vh;overflow:auto}
+.row{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0}
+.grow{flex:1;min-width:0}.t{font-weight:600}.m{color:var(--mute);font-size:12px}
+.chip{display:inline-block;background:#eef1f7;border-radius:10px;padding:1px 8px;margin:2px 3px 0 0;font-size:11px}
+.sw{width:14px;height:14px;border-radius:50%;border:1px solid #bbb;flex:none}
+.q{width:52px;padding:5px;text-align:center;border:1px solid var(--line);border-radius:5px;background:#eef3ff}
+.g{padding:5px;border-radius:5px;border:1px solid var(--line)}.gA{background:#fffbd6}.gB{background:#e2f7e4}.gC{background:#e8ecff}.gD{background:#fde7e7}
+.empty{padding:30px;text-align:center;color:var(--mute)}.drop{padding:18px;border:2px dashed #b9c1d3;border-radius:8px;text-align:center;margin:12px 14px}
+.filters{display:flex;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap}.filters input,.filters select{padding:6px;border:1px solid var(--line);border-radius:6px}
+.modal{position:fixed;inset:0;background:#0007;display:none;align-items:center;justify-content:center;z-index:9}.modal.on{display:flex}
+.dlg{background:#fff;border-radius:10px;width:min(720px,94vw);max-height:90vh;display:flex;flex-direction:column}
+.dlg>div{padding:14px 18px}.dlg .hd{display:flex;justify-content:space-between;font-size:17px;font-weight:600;border-bottom:1px solid var(--line)}
+.dlg .bd{overflow:auto;flex:1}.dlg .ft{display:flex;justify-content:space-between;border-top:1px solid var(--line)}
+.grp{border:1px solid var(--line);border-radius:8px;margin-bottom:12px}.grp>.t{padding:8px 12px;background:#f1f3f8}
+.gr{padding:8px 12px;display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}.gr label{display:block;text-align:center;font-weight:600;font-size:12px}
+.lv{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 14px}.lv label{border:1px solid var(--line);border-radius:16px;padding:4px 10px;cursor:pointer}
+.sum{padding:10px 14px;background:#f7f8fb;border-top:1px solid var(--line);display:flex;gap:18px;flex-wrap:wrap}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:9px 16px;border-radius:8px;display:none;z-index:99}
+
+.steps{display:flex;gap:8px;padding:12px 24px 0;flex-wrap:wrap}.st{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--line);border-radius:20px;padding:5px 14px 5px 6px;color:var(--mute)}
+.st i{font-style:normal;width:22px;height:22px;border-radius:50%;background:#e4e8f0;display:grid;place-items:center;font-weight:700;font-size:12px}
+.st.on{border-color:var(--red);color:var(--ink);font-weight:600}.st.on i{background:var(--red);color:#fff}.st.done i{background:#2e9d57;color:#fff}.st.done{color:var(--ink)}
+.help{margin:10px 14px 0;padding:9px 12px;background:#fff6e5;border-left:4px solid #f0a020;border-radius:6px;font-size:13px}
+.help.ok{background:#e9f7ee;border-color:#2e9d57}.legend{display:flex;gap:6px;margin-top:6px}
+.mean{margin-left:auto;font-size:12px;font-weight:600;color:#2e7d4a;background:#e9f7ee;border-radius:12px;padding:3px 10px;align-self:center}.mean.no{color:#b3261e;background:#fde7e7}
+.row:hover{background:#fafbfe}.q:focus,.g:focus{outline:2px solid #6b8cff}.t{font-size:13.5px}
+.hint{background:#eef3ff;border-radius:8px;padding:10px 12px;margin:10px 0;font-size:13px}.hint b{color:var(--navy)}
+</style></head><body>
+<header><h1><b>Intrakraft</b> · Catalogue upload, Cart &amp; Grade-wise Ratio</h1>
+<input type="file" id="file" accept=".xlsx,.xls" hidden>
+<button onclick="file.click()">Upload catalogue (.xlsx)</button>
+<button class="dark" id="ratioBtn" disabled>Input Ratio</button></header><div class="steps" id="steps"></div>
+<main>
+<section><h2>Catalogue <span id="cnt" class="m" style="color:#cfd6e6"></span></h2>
+<div id="cat"><div class="drop" id="drop"><b>Step 1 · Upload</b><br>Drop <code>sample_catalogue_file.xlsx</code> here or click <b>Upload catalogue</b> (top right).<br><span class="m">Products, colours, MRP and sizes are all read from the file.</span></div></div></section>
+<section><h2>Cart <button class="red" id="clear" style="padding:3px 10px">Clear</button></h2>
+<div class="help" id="help"></div><div class="body" id="cart"><div class="empty">Cart is empty. Select products from the catalogue.</div></div><div class="sum" id="sum"></div></section>
+</main>
+<div class="modal" id="modal"><div class="dlg"><div class="hd">Input Ratio <span style="cursor:pointer" onclick="modal.classList.remove('on')">✕</span></div>
+<div class="bd"><div class="hint"><b>How it works:</b> 1) pick the <b>level</b> that groups products (e.g. Brick = all Shirts together). 2) For each group, type the size ratio for every Grade, e.g. Grade A: S 1, M 2, L 1 means 1 small : 2 medium : 1 large per set. 3) <b>Set Ratio</b> fills the cart. Grades are independent. Only Grades present in your cart are shown.</div><div class="m"><b>Group by:</b></div><div class="lv" id="lv"></div><div id="groups"></div></div>
+<div class="ft"><span><button onclick="resetRatio()" class="dark">Reset Ratio</button> <button onclick="exportJson()">Export JSON</button></span><button class="red" onclick="setRatio()">Set Ratio</button></div></div></div>
+<div id="toast"></div>
+<script>
+const $=id=>document.getElementById(id),GRADES=['A','B','C','D'],SIZE_ORDER=['XXS','XS','S','M','L','XL','XXL','3XL','4XL'];
+const LEVELS=['Brick','Category','Neck','Sleeve','Fit','Pattern','Collar']; // attributes selectable for grouping
+let products=[],cart=[],selected=new Set(),levelAttrs=['Brick'],ratios={}; // ratios[groupKey][grade]={size:qty}
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sortSizes=a=>[...a].sort((x,y)=>(SIZE_ORDER.indexOf(x)+99)%99-(SIZE_ORDER.indexOf(y)+99)%99||0);
+const toast=m=>{const t=$('toast');t.textContent=m;t.style.display='block';setTimeout(()=>t.style.display='none',2200)};
+
+/* 1. Upload & parse: one catalogue row = one SKU (style+colour+size) -> group rows into products */
+async function load(f){
+  const wb=XLSX.read(await f.arrayBuffer());const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+  const map=new Map();
+  rows.forEach(r=>{const k=r.Style_Code+'|'+r.IK_Colour_Name;
+    if(!r.Style_Code)return;
+    if(!map.has(k))map.set(k,{id:k,code:r.Style_Code,name:r.Style_Name,colour:r.IK_Colour_Name,hex:r.IK_Colour_Code,mrp:r.MRP,
+      attrs:Object.fromEntries(LEVELS.map(a=>[a,String(r[a]||'').trim()])),sizes:new Set(),grade:'A'});
+    map.get(k).sizes.add(String(r.Size_Code).trim())});
+  products=[...map.values()].map(p=>({...p,sizes:sortSizes(p.sizes)}));
+  cart=[];selected.clear();ratios={};renderCat();renderCart();toast(products.length+' products loaded from '+rows.length+' catalogue rows');
+}
+$('file').onchange=e=>e.target.files[0]&&load(e.target.files[0]);
+['dragover','drop'].forEach(ev=>document.addEventListener(ev,e=>{e.preventDefault();if(ev==='drop'&&e.dataTransfer.files[0])load(e.dataTransfer.files[0])}));
+
+/* 2. Catalogue list with filters + multi-select */
+let fb='',fq='';
+function renderCat(){
+  const bricks=[...new Set(products.map(p=>p.attrs.Brick))];
+  const list=products.filter(p=>(!fb||p.attrs.Brick===fb)&&(!fq||(p.name+p.code+p.colour).toLowerCase().includes(fq)));
+  $('cat').innerHTML=`<div class="filters"><input id="q" placeholder="Search name / code / colour" value="${esc(fq)}"><select id="b"><option value="">All bricks</option>${bricks.map(b=>`<option ${b===fb?'selected':''}>${esc(b)}</option>`).join('')}</select>
+  <button onclick="selAll()">Select shown</button><button class="red" onclick="addSel()">Add selected to Cart</button></div>
+  <div class="body">${list.map(p=>`<label class="row"><input type="checkbox" ${selected.has(p.id)?'checked':''} onchange="tog('${esc(p.id)}',this.checked)">
+  <span class="sw" style="background:${esc(p.hex)}"></span><span class="grow"><span class="t">${esc(p.name)}</span> <span class="m">${esc(p.code)} · ${esc(p.colour)} · ₹${p.mrp}</span><br>
+  <span class="chip">${esc(p.attrs.Brick)}</span>${p.attrs.Neck?`<span class="chip">${esc(p.attrs.Neck)}</span>`:''}${p.attrs.Sleeve?`<span class="chip">${esc(p.attrs.Sleeve)}</span>`:''}
+  <span class="m"> Sizes: ${p.sizes.join(', ')}</span></span></label>`).join('')||'<div class="empty">No matches</div>'}</div>`;
+  $('cnt').textContent=list.length+' / '+products.length;
+  $('q').oninput=e=>{fq=e.target.value.toLowerCase();renderCat();$('q').focus();$('q').setSelectionRange(fq.length,fq.length)};$('b').onchange=e=>{fb=e.target.value;renderCat()};
+  window.shown=list;
+}
+const tog=(id,on)=>on?selected.add(id):selected.delete(id);
+const selAll=()=>{shown.forEach(p=>selected.add(p.id));renderCat()};
+function addSel(){let n=0;products.filter(p=>selected.has(p.id)&&!cart.some(c=>c.id===p.id)).forEach(p=>{cart.push({...p,sets:1,qty:Object.fromEntries(p.sizes.map(s=>[s,0]))});n++});
+  selected.clear();renderCat();renderCart();toast(n+' product(s) added')}
+
+/* 3. Cart: grade per product, size quantities (from the saved ratio) x sets */
+const total=c=>Object.values(c.qty).reduce((a,b)=>a+b,0)*c.sets;
+const GC={A:'Gold',B:'Green',C:'Blue',D:'Red'};
+function setSteps(){const has=products.length,inCart=cart.length,filled=cart.some(c=>total(c)>0);
+  const st=has?(inCart?(filled?4:3):2):1,L=['Upload catalogue','Select products','Cart + Grades','Set ratio'];
+  $('steps').innerHTML=L.map((l,i)=>`<div class="st ${i+1<st||(i===3&&filled)?'done':i+1===st?'on':''}"><i>${i+1<st||(i===3&&filled)?'✓':i+1}</i>${l}</div>`).join('');
+  const h=$('help');h.className='help'+(filled?' ok':'');
+  h.innerHTML=!inCart?'<b>Your cart is empty.</b> Tick products on the left and press <b>Add selected to Cart</b>.':
+   filled?'<b>Ratio applied.</b> Each box is the ratio quantity for that size; the total is (sum of sizes) × Sets. Raise <b>Sets</b> to scale the order, or reopen <b>Input Ratio</b> to change it.':
+   '<b>Next:</b> pick a <b>Grade</b> (A/B/C/D) on every product, then press <b>Input Ratio</b> in the top bar. Products of the same Grade share one size ratio.';}
+function renderCart(){
+  $('ratioBtn').disabled=!cart.length;setSteps();
+  $('cart').innerHTML=cart.length?cart.map((c,i)=>`<div class="row"><span class="sw" style="background:${esc(c.hex)}"></span><div class="grow"><div class="t">${esc(c.name)} <span class="m">${esc(c.code)} · ${esc(c.colour)} · ${esc(c.attrs.Brick)}</span></div>
+   <div style="display:flex;gap:6px;align-items:flex-end;flex-wrap:wrap;margin-top:4px">
+   <div><div class="m">GRADE</div><select class="g g${c.grade}" onchange="cart[${i}].grade=this.value;renderCart()">${GRADES.map(g=>`<option ${g===c.grade?'selected':''}>${g}</option>`).join('')}</select></div>
+   ${c.sizes.map(s=>`<div><div class="m" style="text-align:center">${s}</div><input class="q" type="number" min="0" value="${c.qty[s]}" onchange="cart[${i}].qty['${s}']=Math.max(0,+this.value||0);renderCart()"></div>`).join('')}
+   <b>×</b><div><div class="m">SETS</div><input class="q" type="number" min="1" value="${c.sets}" onchange="cart[${i}].sets=Math.max(1,+this.value||1);renderCart()"></div><b>= ${total(c)}</b></div></div>
+   <button onclick="cart.splice(${i},1);renderCart()" title="Remove">🗑</button></div>`).join(''):'<div class="empty">Cart is empty. Select products from the catalogue.</div>';
+  const g=Object.fromEntries(GRADES.map(x=>[x,cart.filter(c=>c.grade===x).length]));
+  $('sum').innerHTML=`<span>Products: <b>${cart.length}</b></span><span>Total qty: <b>${cart.reduce((a,c)=>a+total(c),0)}</b></span><span>${GRADES.map(x=>`${x}: <b>${g[x]}</b>`).join(' &nbsp; ')}</span>`;
+}
+$('clear').onclick=()=>{cart=[];renderCart()};
+
+/* 4. Ratio: group cart items by chosen attribute level; ratio kept per group per grade */
+const keyOf=(p,a=levelAttrs)=>a.join('+')+'::'+a.map(x=>p.attrs[x]||'(blank)').join(' | '); // e.g. "Brick+Neck::Shirts | Round Neck"
+$('ratioBtn').onclick=()=>{drawModal();modal.classList.add('on')};
+function drawModal(){
+  $('lv').innerHTML=LEVELS.map(a=>`<label><input type="checkbox" ${levelAttrs.includes(a)?'checked':''} onchange="lvl('${a}',this.checked)"> ${a}</label>`).join('')+
+   `<span class="m">Presets: <a href="#" onclick="preset(['Brick']);return false">Brick</a> · <a href="#" onclick="preset(['Category']);return false">Category</a> · <a href="#" onclick="preset(['Brick','Neck']);return false">Brick+Neck</a> · <a href="#" onclick="preset(['Brick','Sleeve']);return false">Brick+Sleeve</a></span>`;
+  const groups=new Map();cart.forEach(c=>{const k=keyOf(c);if(!groups.has(k))groups.set(k,[]);groups.get(k).push(c)});
+  $('groups').innerHTML=[...groups].map(([k,items])=>{
+    const sizes=sortSizes(new Set(items.flatMap(i=>i.sizes))),grades=GRADES.filter(g=>items.some(i=>i.grade===g));
+    return `<div class="grp"><div class="t">${esc(k.split('::')[1])} <span class="m">(${items.length} product${items.length>1?'s':''}: ${items.map(i=>i.code).join(', ')})</span></div>`+grades.map(g=>`<div class="gr"><b style="width:70px">GRADE ${g}</b>${sizes.map(s=>
+      `<div><label>${s}</label><input class="q" type="number" min="0" data-k="${esc(k)}" data-g="${g}" data-s="${s}" value="${(ratios[k]?.[g]?.[s])??0}"></div>`).join('')}</div>`).join('')+`</div>`}).join('');
+}
+function updMeans(){document.querySelectorAll('#groups .gr').forEach(r=>{let m=r.querySelector('.mean');if(!m){m=document.createElement('span');r.appendChild(m)}
+  const v=[...r.querySelectorAll('input')].map(i=>[i.dataset.s,+i.value||0]).filter(x=>x[1]>0);
+  m.className='mean'+(v.length?'':' no');m.textContent=v.length?v.map(x=>x[0]).join(':')+' = '+v.map(x=>x[1]).join(':'):'ratio not set'})}
+{const _d=drawModal;drawModal=()=>{_d();$('groups').oninput=updMeans;updMeans()}}
+const lvl=(a,on)=>{levelAttrs=on?[...levelAttrs,a]:levelAttrs.filter(x=>x!==a);if(!levelAttrs.length)levelAttrs=['Brick'];drawModal()};
+const preset=a=>{levelAttrs=a;drawModal()};
+function readInputs(){document.querySelectorAll('#groups input').forEach(i=>{const{k,g,s}=i.dataset;((ratios[k]??={})[g]??={})[s]=Math.max(0,+i.value||0)})}
+function setRatio(){readInputs();let n=0;
+  cart.forEach(c=>{const r=ratios[keyOf(c)]?.[c.grade];if(r){c.sizes.forEach(s=>c.qty[s]=r[s]||0);n++}});
+  renderCart();modal.classList.remove('on');toast('Ratio applied to '+n+' product(s)')}
+function resetRatio(){ratios={};cart.forEach(c=>c.sizes.forEach(s=>c.qty[s]=0));drawModal();renderCart()}
+/* Export in the "Sample Ratio Format" shape: [{title, attribute_data:[{key,value}], size:[{size,value}], grade}] */
+function exportJson(){readInputs();const out=[];
+  Object.entries(ratios).forEach(([k,gs])=>{const [ak,vk]=k.split('::'),vals=vk.split(' | '),attrs=ak.split('+');Object.entries(gs).forEach(([g,r])=>out.push({title:vals.join(' - '),
+    attribute_data:attrs.map((a,i)=>({key:a,value:vals[i]})),size:Object.entries(r).map(([size,value])=>({size,value})),grade:g}))});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:'application/json'}));a.download='ratio.json';a.click()}
+</script></body></html>
